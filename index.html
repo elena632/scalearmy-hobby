@@ -566,7 +566,7 @@ p, .body { color: var(--cream-70); }
     <div class="tag mb-3">Game Over</div>
 
     <div class="score-ring">
-      <h1 class="score-num" id="scorenum" style="font-size:clamp(42px,8vw,68px); line-height:1; display:flex; align-items:baseline; gap:6px;"><span id="score-val">3</span><span style="font-size:0.55em; color:var(--cream-40); font-weight:500;">/ <span id="scoretotal">4</span></span></h1>
+      <h1 class="score-num" id="scorenum" style="font-size:clamp(42px,8vw,68px); line-height:1; display:flex; align-items:center; gap:4px;"><span id="score-val">3</span><span style="opacity:0.5;">/</span><span id="scoretotal">4</span></h1>
     </div>
 
     <!-- ✅ EXACT tagline — do not change -->
@@ -674,6 +674,7 @@ p, .body { color: var(--cream-70); }
 <!-- ══════════════════════════════════════════
      JAVASCRIPT
 ══════════════════════════════════════════ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 
 /* ─────────────────────────────────────────
@@ -785,6 +786,11 @@ let repName="", sessionAnswers=[], activeRounds=[];
 /* ─────────────────────────────────────────
    NAVIGATION
 ───────────────────────────────────────── */
+
+const _supa = window.supabase?.createClient('https://joyphdcyepmihdrkneqb.supabase.co', 'sb_publishable_VQbBQERopgFO6YLQBvOJFw_AWNtblKD');
+const APP_TYPE = 'hobby';
+
+
 function goto(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById(id).classList.add('active');
@@ -812,10 +818,15 @@ function jumpRound(n) {
 ───────────────────────────────────────── */
 function startGame(){ const sel=document.getElementById('rep-input'); const val=sel.value.trim(); if(!val){sel.style.borderColor='var(--orange)'; sel.focus(); return;} repName=val; sel.selectedIndex=0; _kickoff(); }
 
-function _kickoff() {
+async function _kickoff() {
   cur=0; score=0; sessionAnswers=[];
-  const _saved = localStorage.getItem('sa_rounds');
-  const _rounds = _saved ? JSON.parse(_saved) : CONFIG.rounds;
+  let _rounds = CONFIG.rounds;
+  try {
+    if(_supa) {
+      const { data } = await _supa.from('config').select('rounds').eq('app_type', APP_TYPE).single();
+      if(data && data.rounds && data.rounds.length > 0) _rounds = data.rounds;
+    }
+  } catch(e) {}
   activeRounds = _rounds.slice(0, CONFIG.defaultRounds);
   document.getElementById('rtotal').textContent    = activeRounds.length;
   document.getElementById('scoretotal').textContent = activeRounds.length;
@@ -966,12 +977,20 @@ function resetGame() {
   goto('s-cover');
 }
 
-function bookCall() {
-  const url = localStorage.getItem('sa_calendly') || CONFIG.calendlyUrl;
+async function bookCall() {
+  let url = CONFIG.calendlyUrl;
+  try {
+    if(_supa) {
+      const { data } = await _supa.from('config').select('calendly_url').eq('app_type', APP_TYPE).single();
+      if(data && data.calendly_url) url = data.calendly_url;
+    }
+  } catch(e) {}
   window.open(url, '_blank');
-  const key = 'sa_analytics';
-  const data = JSON.parse(localStorage.getItem(key) || '[]');
-  if (data.length) { data[data.length - 1].converted = true; localStorage.setItem(key, JSON.stringify(data)); }
+  try {
+    if(_supa && window._lastAnalyticsId) {
+      await _supa.from('analytics').update({ converted: true }).eq('id', window._lastAnalyticsId);
+    }
+  } catch(e) {}
 }
 
 
@@ -1000,11 +1019,15 @@ function launchConfetti() {
    ANALYTICS
 ───────────────────────────────────────── */
 function saveAnalytics() {
-  const key='sa_analytics', data=JSON.parse(localStorage.getItem(key)||'[]');
-  data.push({ rep:repName||'Anonymous', score, total:activeRounds.length,
-    answers:sessionAnswers.map(a=>a.correct?'✓':'✗').join(' '),
-    timestamp:new Date().toLocaleString(), converted:false });
-  localStorage.setItem(key,JSON.stringify(data));
+  const entry = { app_type: APP_TYPE, rep: repName, score, total: activeRounds.length, date: new Date().toLocaleDateString(), answers: sessionAnswers, converted: false };
+  try {
+    if(_supa) {
+      const { data: inserted } = await _supa.from('analytics').insert(entry).select().single();
+      window._lastAnalyticsId = inserted?.id;
+    }
+  } catch(e) {
+    const d = JSON.parse(localStorage.getItem('sa_analytics')||'[]'); d.push(entry); localStorage.setItem('sa_analytics', JSON.stringify(d));
+  }
 }
 function openAnalytics() {
   const data=JSON.parse(localStorage.getItem('sa_analytics')||'[]');

@@ -453,6 +453,7 @@
             }
         }
     </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <!-- Sidebar -->
@@ -545,6 +546,9 @@
     </div>
 
     <script>
+const _supa = window.supabase?.createClient('https://joyphdcyepmihdrkneqb.supabase.co', 'sb_publishable_VQbBQERopgFO6YLQBvOJFw_AWNtblKD');
+const APP_TYPE = 'hobby';
+
         const COUNTRY_FLAGS = {
             'Nigeria': '🇳🇬',
             'Ghana': '🇬🇭',
@@ -618,10 +622,20 @@
             }
         }
 
-        function loadRounds() {
+        async async function loadRounds() {
+            let rounds = [];
+            try {
+              if(_supa) {
+                const { data } = await _supa.from('config').select('rounds').eq('app_type', APP_TYPE).single();
+                if(data && data.rounds) rounds = data.rounds;
+              }
+            } catch(e) {
+              const saved = localStorage.getItem('sa_rounds');
+              if(saved) rounds = JSON.parse(saved);
+            }
+
             const container = document.getElementById('rounds-container');
-            const savedData = localStorage.getItem('sa_rounds');
-            const rounds = savedData ? JSON.parse(savedData) : [];
+            container.innerHTML = '';
 
             while (rounds.length < 5) {
                 rounds.push({
@@ -638,14 +652,23 @@
                         { name: '', flag: '' },
                         { name: '', flag: '' }
                     ],
-                    correctIndex: 0
                 });
             }
 
-            container.innerHTML = '';
-
-            rounds.forEach((round, index) => {
-                const card = createRoundCard(round, index);
+            rounds.slice(0, 5).forEach((round, idx) => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-header">Round ${idx + 1}</div>
+                    <input type="text" placeholder="Video ID" value="${round.videoId || ''}" onchange="saveRound(${idx})">
+                    <input type="text" placeholder="Candidate Name" value="${round.candidateName || ''}" onchange="saveRound(${idx})">
+                    <input type="text" placeholder="Role" value="${round.role || ''}" onchange="saveRound(${idx})">
+                    <input type="text" placeholder="Country" value="${round.country || ''}" onchange="saveRound(${idx})">
+                    <input type="text" placeholder="Flag Emoji" value="${round.flag || ''}" onchange="saveRound(${idx})">
+                    <input type="text" placeholder="Hire Amount" value="${round.hireAmount || ''}" onchange="saveRound(${idx})">
+                    <input type="text" placeholder="Savings Line" value="${round.savingsLine || ''}" onchange="saveRound(${idx})">
+                    <button onclick="saveRound(${idx})">Save Round ${idx + 1}</button>
+                `;
                 container.appendChild(card);
             });
         }
@@ -800,40 +823,43 @@
             return fileId;
         }
 
-        function saveRound(roundIndex) {
-            const card = document.querySelectorAll('.card')[roundIndex];
-
+        async async function saveRound(roundIndex) {
+            const card = event.target.closest('.card');
+            const inputs = card.querySelectorAll('input');
+            
             const roundData = {
-                videoId: card.querySelector('.drive-url').value || '',
-                candidateName: card.querySelector('.candidate-name').value || '',
-                role: card.querySelector('.role').value || '',
-                hobby: card.querySelector('.hobby').value || '',
-                hireAmount: card.querySelector('.hire-amount').value || '',
-                savingsLine: card.querySelector('.savings-line').value || '',
-                options: [],
-                correctIndex: 0
+                videoId: inputs[0]?.value || '',
+                candidateName: inputs[1]?.value || '',
+                role: inputs[2]?.value || '',
+                country: inputs[3]?.value || '',
+                flag: inputs[4]?.value || '',
+                hireAmount: inputs[5]?.value || '',
+                savingsLine: inputs[6]?.value || '',
+                options: [
+                    { name: '', flag: '' },
+                    { name: '', flag: '' },
+                    { name: '', flag: '' },
+                    { name: '', flag: '' }
+                ]
             };
 
-            for (let i = 0; i < 4; i++) {
-                const hobby = card.querySelector(`.option-name-${roundIndex}-${i}`).value || '';
-                const emoji = card.querySelector(`.option-flag-${roundIndex}-${i}`).value || '';
-                roundData.options.push({ hobby, emoji });
-            }
-
-            const correctRadio = card.querySelector(`.correct-radio-${roundIndex}:checked`);
-            if (correctRadio) {
-                roundData.correctIndex = parseInt(correctRadio.value);
-            }
-
             let rounds = [];
-            const saved = localStorage.getItem('sa_rounds');
-            if (saved) {
-                rounds = JSON.parse(saved);
-            }
+            try {
+              if(_supa) {
+                const { data } = await _supa.from('config').select('rounds').eq('app_type', APP_TYPE).single();
+                if(data && data.rounds) rounds = data.rounds;
+              }
+            } catch(e) {}
+            while(rounds.length <= roundIndex) rounds.push({});
             rounds[roundIndex] = roundData;
-            localStorage.setItem('sa_rounds', JSON.stringify(rounds));
-
-            alert(`Round ${roundIndex + 1} saved successfully!`);
+            try {
+              if(_supa) {
+                await _supa.from('config').update({ rounds, updated_at: new Date().toISOString() }).eq('app_type', APP_TYPE);
+              }
+            } catch(e) { localStorage.setItem('sa_rounds', JSON.stringify(rounds)); }
+            
+            const msg = document.getElementById('save-msg');
+            if(msg) { msg.style.opacity='1'; setTimeout(()=>msg.style.opacity='0', 2000); }
         }
 
         function saveAllRounds() {
@@ -876,135 +902,53 @@
             alert('All rounds saved successfully!');
         }
 
-        function loadAnalytics() {
-            const analyticsContent = document.getElementById('analytics-content');
-            const saved = localStorage.getItem('sa_analytics');
-            const analytics = saved ? JSON.parse(saved) : [];
+        async function loadAnalytics() {
+            let sessions = [];
+            try {
+              if(_supa) {
+                const { data } = await _supa.from('analytics').select('*').eq('app_type', APP_TYPE).order('created_at', { ascending: false });
+                if(data) sessions = data;
+              }
+            } catch(e) {
+              sessions = JSON.parse(localStorage.getItem('sa_analytics') || '[]');
+            }
 
-            if (analytics.length === 0) {
-                analyticsContent.innerHTML = `
-                    <div class="empty-state">
-                        <div style="font-size: 48px;">📊</div>
-                        <p>No data yet. Analytics will appear here once presentations have been played.</p>
-                    </div>
-                `;
+            const container = document.getElementById('analytics-container');
+            if(!container) return;
+            container.innerHTML = '';
+
+            if(sessions.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #999;">No analytics data yet</p>';
                 return;
             }
 
-            const totalPlays = analytics.length;
-            const conversions = analytics.filter(a => a.converted).length;
-            const avgScore = analytics.reduce((sum, a) => sum + (a.score / a.total), 0) / totalPlays;
-            const conversionRate = (conversions / totalPlays) * 100;
-
-            const byPresenter = {};
-            analytics.forEach(entry => {
-                if (!byPresenter[entry.rep]) {
-                    byPresenter[entry.rep] = {
-                        sessions: 0,
-                        totalScore: 0,
-                        totalQuestions: 0,
-                        conversions: 0
-                    };
-                }
-                byPresenter[entry.rep].sessions++;
-                byPresenter[entry.rep].totalScore += entry.score;
-                byPresenter[entry.rep].totalQuestions += entry.total;
-                if (entry.converted) byPresenter[entry.rep].conversions++;
-            });
-
-            let html = `
-                <div class="summary-grid">
-                    <div class="summary-card">
-                        <div class="number">${totalPlays}</div>
-                        <div class="label">Total Plays</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="number">${(avgScore * 100).toFixed(0)}%</div>
-                        <div class="label">Avg Score</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="number">${conversions}</div>
-                        <div class="label">Conversions</div>
-                    </div>
-                    <div class="summary-card">
-                        <div class="number">${conversionRate.toFixed(1)}%</div>
-                        <div class="label">Conversion Rate</div>
-                    </div>
-                </div>
-
-                <h3 style="margin-bottom: 20px; font-family: Georgia, serif; font-size: 18px;">Per-Presenter Breakdown</h3>
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Presenter</th>
-                                <th>Sessions</th>
-                                <th>Avg Score</th>
-                                <th>Conversions</th>
-                                <th>Conv. Rate</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-            `;
-
-            for (const [rep, data] of Object.entries(byPresenter)) {
-                const presenterAvgScore = (data.totalScore / data.totalQuestions) * 100;
-                const presenterConvRate = (data.conversions / data.sessions) * 100;
-                const convColor = presenterConvRate >= 50 ? 'status-green' : (presenterConvRate >= 20 ? 'status-orange' : 'status-red');
-
-                html += `
+            const table = document.createElement('table');
+            table.className = 'analytics-table';
+            table.innerHTML = `
+                <thead>
                     <tr>
-                        <td>${rep}</td>
-                        <td>${data.sessions}</td>
-                        <td>${presenterAvgScore.toFixed(0)}%</td>
-                        <td>${data.conversions}</td>
-                        <td class="${convColor}">${presenterConvRate.toFixed(1)}%</td>
+                        <th>Rep</th>
+                        <th>Score</th>
+                        <th>Total</th>
+                        <th>Date</th>
+                        <th>Converted</th>
                     </tr>
-                `;
-            }
-
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-
-                <h3 style="margin-bottom: 20px; font-family: Georgia, serif; font-size: 18px;">Session Log</h3>
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Presenter</th>
-                                <th>Score</th>
-                                <th>Booked?</th>
-                            </tr>
-                        </thead>
-                        <tbody>
+                </thead>
+                <tbody>
+                    ${sessions.map(s => `
+                        <tr>
+                            <td>${s.rep || s.name || 'Anonymous'}</td>
+                            <td>${s.score || 0}</td>
+                            <td>${s.total || 0}</td>
+                            <td>${s.date || (s.created_at ? new Date(s.created_at).toLocaleDateString() : 'N/A')}</td>
+                            <td>${s.converted ? '✓' : '✗'}</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
             `;
-
-            const sorted = [...analytics].sort((a, b) => new Date(b.date) - new Date(a.date));
-
-            sorted.forEach(entry => {
-                const booked = entry.converted ? '✅ Yes' : '—';
-                const score = ((entry.score / entry.total) * 100).toFixed(0);
-                html += `
-                    <tr>
-                        <td>${new Date(entry.date).toLocaleDateString()}</td>
-                        <td>${entry.rep}</td>
-                        <td>${score}%</td>
-                        <td>${booked}</td>
-                    </tr>
-                `;
-            });
-
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-
-            analyticsContent.innerHTML = html;
-        }
+            container.appendChild(table);
+        
+}
 
         function refreshAnalytics() {
             loadAnalytics();
@@ -1018,20 +962,32 @@
             }
         }
 
-        function loadCalendly() {
-            const saved = localStorage.getItem('sa_calendly') || '';
-            document.getElementById('calendly-url').value = saved;
-            document.getElementById('calendly-current').textContent = saved || 'Not set';
-        }
+        async function loadCalendly() {
+    let url = '';
+    try {
+      if(_supa) {
+        const { data } = await _supa.from('config').select('calendly_url').eq('app_type', APP_TYPE).single();
+        if(data) url = data.calendly_url || '';
+      }
+    } catch(e) { url = localStorage.getItem('sa_calendly') || ''; }
+    const el = document.getElementById('calendly-url');
+    const cur = document.getElementById('calendly-current');
+    if(el) el.value = url;
+    if(cur) cur.textContent = url || 'Not set';
 
-        function saveCalendly() {
-            const url = document.getElementById('calendly-url').value.trim();
-            localStorage.setItem('sa_calendly', url);
-            document.getElementById('calendly-current').textContent = url || 'Not set';
-            const msg = document.getElementById('calendly-saved');
-            msg.style.opacity = '1';
-            setTimeout(() => msg.style.opacity = '0', 2000);
-        }
+}
+
+        async function saveCalendly() {
+    const url = document.getElementById('calendly-url').value.trim();
+    try {
+      if(_supa) await _supa.from('config').update({ calendly_url: url }).eq('app_type', APP_TYPE);
+    } catch(e) { localStorage.setItem('sa_calendly', url); }
+    const cur = document.getElementById('calendly-current');
+    if(cur) cur.textContent = url || 'Not set';
+    const msg = document.getElementById('calendly-saved');
+    if(msg) { msg.style.opacity='1'; setTimeout(()=>msg.style.opacity='0', 2000); }
+
+}
 
     </script>
 </body>
