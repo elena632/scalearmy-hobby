@@ -809,56 +809,80 @@ const APP_TYPE = 'hobby';
             return fileId;
         }
 
-        async async function saveRound(roundIndex) {
-            const card = event.target.closest('.card');
-            const inputs = card.querySelectorAll('input');
-            
+        async function saveRound(roundIndex) {
+            const card = document.querySelectorAll('.card')[roundIndex];
+
+            // Extract file ID if a full Google Drive URL was pasted
+            let videoInput = card.querySelector('.drive-url').value || '';
+            const driveMatch = videoInput.match(/\/d\/([a-zA-Z0-9_-]+)/);
+            if (driveMatch) { videoInput = driveMatch[1]; card.querySelector('.drive-url').value = videoInput; }
+
             const roundData = {
-                videoId: inputs[0]?.value || '',
-                candidateName: inputs[1]?.value || '',
-                role: inputs[2]?.value || '',
-                country: inputs[3]?.value || '',
-                flag: inputs[4]?.value || '',
-                hireAmount: inputs[5]?.value || '',
-                savingsLine: inputs[6]?.value || '',
-                options: [
-                    { name: '', flag: '' },
-                    { name: '', flag: '' },
-                    { name: '', flag: '' },
-                    { name: '', flag: '' }
-                ]
+                videoId: videoInput,
+                candidateName: card.querySelector('.candidate-name').value || '',
+                role: card.querySelector('.role').value || '',
+                hobby: card.querySelector('.hobby').value || '',
+                hireAmount: card.querySelector('.hire-amount').value || '',
+                savingsLine: card.querySelector('.savings-line').value || '',
+                options: [],
+                correctIndex: 0
             };
 
-            let rounds = [];
+            for (let i = 0; i < 4; i++) {
+                const hobby = card.querySelector(`.option-name-${roundIndex}-${i}`)?.value || '';
+                const emoji = card.querySelector(`.option-flag-${roundIndex}-${i}`)?.value || '';
+                roundData.options.push({ hobby, emoji });
+            }
+
+            const correctRadio = card.querySelector(`.correct-radio-${roundIndex}:checked`);
+            if (correctRadio) {
+                roundData.correctIndex = parseInt(correctRadio.value);
+            }
+
+            // Fetch ALL current rounds from Supabase first to avoid overwriting other rounds
+            let rounds = Array.from({length: 5}, () => ({
+                videoId: '', candidateName: '', role: '', hobby: '',
+                hireAmount: '', savingsLine: '',
+                options: [{hobby:'',emoji:''},{hobby:'',emoji:''},{hobby:'',emoji:''},{hobby:'',emoji:''}],
+                correctIndex: 0
+            }));
             try {
-              if(_supa) {
-                const { data } = await _supa.from('config').select('rounds').eq('app_type', APP_TYPE).single();
-                if(data && data.rounds) rounds = data.rounds;
-              }
+                if(_supa) {
+                    const { data } = await _supa.from('config').select('rounds').eq('app_type', APP_TYPE).single();
+                    if(data && data.rounds && Array.isArray(data.rounds)) {
+                        data.rounds.forEach((r, i) => { if(i < 5) rounds[i] = Object.assign(rounds[i], r); });
+                    }
+                }
             } catch(e) {}
-            while(rounds.length <= roundIndex) rounds.push({});
+
             rounds[roundIndex] = roundData;
             try {
-              if(_supa) {
-                await _supa.from('config').update({ rounds, updated_at: new Date().toISOString() }).eq('app_type', APP_TYPE);
-              }
+                if(_supa) {
+                    await _supa.from('config').update({ rounds, updated_at: new Date().toISOString() }).eq('app_type', APP_TYPE);
+                }
             } catch(e) { localStorage.setItem('sa_rounds', JSON.stringify(rounds)); }
-            
+
             const msg = document.getElementById('save-msg');
             if(msg) { msg.style.opacity='1'; setTimeout(()=>msg.style.opacity='0', 2000); }
+            else { alert('Round ' + (roundIndex+1) + ' saved!'); }
         }
 
         async function saveAllRounds() {
+            // Collect all 5 rounds in one pass, then save once
+            const rounds = [];
             for (let i = 0; i < 5; i++) {
                 const card = document.querySelectorAll('.card')[i];
-                if (!card) continue;
+                if (!card) { rounds.push({videoId:'',candidateName:'',role:'',hobby:'',hireAmount:'',savingsLine:'',options:[{hobby:'',emoji:''},{hobby:'',emoji:''},{hobby:'',emoji:''},{hobby:'',emoji:''}],correctIndex:0}); continue; }
+
+                let videoInput = card.querySelector('.drive-url').value || '';
+                const driveMatch = videoInput.match(/\/d\/([a-zA-Z0-9_-]+)/);
+                if (driveMatch) { videoInput = driveMatch[1]; card.querySelector('.drive-url').value = videoInput; }
 
                 const roundData = {
-                    videoId: card.querySelector('.drive-url').value || '',
+                    videoId: videoInput,
                     candidateName: card.querySelector('.candidate-name').value || '',
                     role: card.querySelector('.role').value || '',
-                    country: card.querySelector('.country').value || '',
-                    flag: card.querySelector('.flag').value || '',
+                    hobby: card.querySelector('.hobby').value || '',
                     hireAmount: card.querySelector('.hire-amount').value || '',
                     savingsLine: card.querySelector('.savings-line').value || '',
                     options: [],
@@ -866,28 +890,26 @@ const APP_TYPE = 'hobby';
                 };
 
                 for (let j = 0; j < 4; j++) {
-                    const name = card.querySelector(`.option-name-${i}-${j}`).value || '';
-                    const flag = card.querySelector(`.option-flag-${i}-${j}`).value || '';
-                    roundData.options.push({ name, flag });
+                    const hobby = card.querySelector(`.option-name-${i}-${j}`)?.value || '';
+                    const emoji = card.querySelector(`.option-flag-${i}-${j}`)?.value || '';
+                    roundData.options.push({ hobby, emoji });
                 }
 
                 const correctRadio = card.querySelector(`.correct-radio-${i}:checked`);
                 if (correctRadio) {
                     roundData.correctIndex = parseInt(correctRadio.value);
                 }
-
-                let rounds = [];
-                const saved = localStorage.getItem('sa_rounds');
-                if (saved) {
-                    rounds = JSON.parse(saved);
-                }
-                rounds[i] = roundData;
-                localStorage.setItem('sa_rounds', JSON.stringify(rounds));
+                rounds.push(roundData);
             }
+
+            try {
+                if(_supa) {
+                    await _supa.from('config').update({ rounds, updated_at: new Date().toISOString() }).eq('app_type', APP_TYPE);
+                }
+            } catch(e) { localStorage.setItem('sa_rounds', JSON.stringify(rounds)); }
 
             alert('All rounds saved successfully!');
         }
-
         async function loadAnalytics() {
             let sessions = [];
             try {
