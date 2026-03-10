@@ -808,9 +808,7 @@ function goto(id) {
 }
 
 function jumpRound(n) {
-  const _saved = localStorage.getItem('sa_rounds');
-  const _rounds = _saved ? JSON.parse(_saved) : CONFIG.rounds;
-  activeRounds = _rounds.slice(0, CONFIG.defaultRounds);
+  // Use already-loaded activeRounds (from Supabase), not localStorage
   cur = Math.min(n-1, activeRounds.length-1);
   score=0; sessionAnswers=[];
   refreshDots(activeRounds.length);
@@ -1110,7 +1108,9 @@ function checkAdminPin(){
 function pluralize(role) {
   const words = role.trim().split(' ');
   const last = words[words.length - 1];
-  words[words.length - 1] = /(?:s|x|z|ch|sh)$/i.test(last) ? last + 'es' : last + 's';
+  // If already ends in 's', it's already plural — don't add anything
+  if (/s$/i.test(last)) return words.join(' ');
+  words[words.length - 1] = /(?:x|z|ch|sh)$/i.test(last) ? last + 'es' : last + 's';
   return words.join(' ');
 }
 function showIntro(roundIdx) {
