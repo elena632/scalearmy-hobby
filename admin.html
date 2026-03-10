@@ -591,9 +591,9 @@ const APP_TYPE = 'hobby';
             'S. Asia': ['India', 'Pakistan', 'Bangladesh', 'Sri Lanka']
         };
 
-        document.addEventListener('DOMContentLoaded', function() {
-            loadRounds();
-            loadAnalytics();
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadRounds();
+            await loadAnalytics();
         });
 
         function openSection(sectionName) {
@@ -623,56 +623,42 @@ const APP_TYPE = 'hobby';
         }
 
         async async function loadRounds() {
-            let rounds = [];
-            try {
-              if(_supa) {
-                const { data } = await _supa.from('config').select('rounds').eq('app_type', APP_TYPE).single();
-                if(data && data.rounds) rounds = data.rounds;
-              }
-            } catch(e) {
-              const saved = localStorage.getItem('sa_rounds');
-              if(saved) rounds = JSON.parse(saved);
-            }
-
-            const container = document.getElementById('rounds-container');
-            container.innerHTML = '';
-
-            while (rounds.length < 5) {
-                rounds.push({
+            // Always start with 5 empty rounds as fallback
+            let rounds = Array.from({length: 5}, () => ({
                     videoId: '',
                     candidateName: '',
                     role: '',
-                    country: '',
-                    flag: '',
+                    hobby: '',
                     hireAmount: '',
                     savingsLine: '',
                     options: [
-                        { name: '', flag: '' },
-                        { name: '', flag: '' },
-                        { name: '', flag: '' },
-                        { name: '', flag: '' }
+                        { hobby: '', emoji: '' },
+                        { hobby: '', emoji: '' },
+                        { hobby: '', emoji: '' },
+                        { hobby: '', emoji: '' }
                     ],
-                });
+                    correctIndex: 0
+                }));
+            try {
+                if(_supa) {
+                    const { data, error } = await _supa.from('config').select('rounds').eq('app_type', APP_TYPE).single();
+                    if(data && data.rounds && Array.isArray(data.rounds)) {
+                        data.rounds.forEach((r, i) => { if(i < 5) rounds[i] = Object.assign(rounds[i], r); });
+                    }
+                }
+            } catch(e) {
+                console.log('Supabase error, using defaults:', e);
             }
-
-            rounds.slice(0, 5).forEach((round, idx) => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="card-header">Round ${idx + 1}</div>
-                    <input type="text" placeholder="Video ID" value="${round.videoId || ''}" onchange="saveRound(${idx})">
-                    <input type="text" placeholder="Candidate Name" value="${round.candidateName || ''}" onchange="saveRound(${idx})">
-                    <input type="text" placeholder="Role" value="${round.role || ''}" onchange="saveRound(${idx})">
-                    <input type="text" placeholder="Country" value="${round.country || ''}" onchange="saveRound(${idx})">
-                    <input type="text" placeholder="Flag Emoji" value="${round.flag || ''}" onchange="saveRound(${idx})">
-                    <input type="text" placeholder="Hire Amount" value="${round.hireAmount || ''}" onchange="saveRound(${idx})">
-                    <input type="text" placeholder="Savings Line" value="${round.savingsLine || ''}" onchange="saveRound(${idx})">
-                    <button onclick="saveRound(${idx})">Save Round ${idx + 1}</button>
-                `;
+            const container = document.getElementById('rounds-container');
+            if(!container) return;
+            container.innerHTML = '';
+            rounds.forEach((round, index) => {
+                const card = createRoundCard(round, index);
                 container.appendChild(card);
             });
         }
 
+        
         function createRoundCard(roundData, roundIndex) {
             const card = document.createElement('div');
             card.className = 'card';
@@ -862,7 +848,7 @@ const APP_TYPE = 'hobby';
             if(msg) { msg.style.opacity='1'; setTimeout(()=>msg.style.opacity='0', 2000); }
         }
 
-        function saveAllRounds() {
+        async function saveAllRounds() {
             for (let i = 0; i < 5; i++) {
                 const card = document.querySelectorAll('.card')[i];
                 if (!card) continue;
