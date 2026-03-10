@@ -871,31 +871,26 @@ function startGame(){ const sel=document.getElementById('rep-input'); const val=
 
 async function _kickoff() {
   cur=0; score=0; sessionAnswers=[];
-  // Navigate away immediately using CONFIG defaults — no more visible delay/erase
-  activeRounds = CONFIG.rounds.slice(0, CONFIG.defaultRounds);
-  document.getElementById('rtotal').textContent     = activeRounds.length;
-  document.getElementById('scoretotal').textContent = activeRounds.length;
-  refreshDots(activeRounds.length);
-  showIntro(0);
-  // Fetch fresh rounds from Supabase in background (ready before user taps Let's Go)
+  // Navigate away from s-rep immediately so dropdown doesn't look frozen
+  goto('s-intro');
+  document.getElementById('intro-role').textContent = '…';
+  // Fetch real rounds from Supabase — user is on intro screen reading it
+  let _rounds = CONFIG.rounds;
   try {
     if(_supa) {
       const { data } = await _supa.from('config').select('rounds').eq('app_type', APP_TYPE).single();
-      if(data && data.rounds && data.rounds.length > 0) {
-        activeRounds = data.rounds.slice(0, CONFIG.defaultRounds);
-        document.getElementById('rtotal').textContent     = activeRounds.length;
-        document.getElementById('scoretotal').textContent = activeRounds.length;
-        refreshDots(activeRounds.length);
-        // Update intro slide role text if user is still on it
-        if(document.getElementById('s-intro').classList.contains('active')) {
-          const r0 = activeRounds[0];
-          if(r0) document.getElementById('intro-role').textContent = pluralize(r0.role || 'Candidates');
-        }
-        // Pre-cache all videos in background
-        preCacheAllVideos(activeRounds);
-      }
+      if(data && data.rounds && data.rounds.length > 0) _rounds = data.rounds;
     }
   } catch(e) {}
+  activeRounds = _rounds.slice(0, CONFIG.defaultRounds);
+  document.getElementById('rtotal').textContent     = activeRounds.length;
+  document.getElementById('scoretotal').textContent = activeRounds.length;
+  refreshDots(activeRounds.length);
+  // Update intro with real role now that data is ready
+  const r0 = activeRounds[0];
+  if(r0) document.getElementById('intro-role').textContent = pluralize(r0.role || 'Candidates');
+  // Pre-cache all videos in background
+  preCacheAllVideos(activeRounds);
 }
 
 function refreshDots(total) {
