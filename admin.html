@@ -625,7 +625,7 @@ const APP_TYPE = 'hobby';
         async async function loadRounds() {
             // Always start with 5 empty rounds as fallback
             let rounds = Array.from({length: 5}, () => ({
-                    videoId: '',
+                    videoUrl: '',
                     candidateName: '',
                     role: '',
                     hobby: '',
@@ -675,10 +675,12 @@ const APP_TYPE = 'hobby';
 
             let html = `
                 <div class="form-group">
-                    <label>Google Drive Link</label>
-                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px;">
-                        <input type="text" class="drive-url" placeholder="Paste Drive share link here" value="${roundData.videoId || ''}">
-                        <button class="btn btn-secondary btn-small extract-button" onclick="extractDriveId(${roundIndex})">Extract ID</button>
+                    <label>Video File</label>
+                    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+                        <input type="file" id="file-input-${roundIndex}" accept="video/mp4,video/*" style="display:none;" onchange="handleVideoUpload(${roundIndex}, this)">
+                        <button class="btn btn-secondary btn-small" onclick="document.getElementById('file-input-${roundIndex}').click()" type="button">📁 Choose Video</button>
+                        <span id="video-status-${roundIndex}" style="font-size:13px; color:rgba(245,240,232,0.6);">${roundData.videoUrl ? '✅ ' + (roundData.videoUrl.split('/').pop() || 'Video uploaded') : 'No video uploaded'}</span>
+                        <input type="hidden" class="video-url" value="${roundData.videoUrl || roundData.videoId || ''}">
                     </div>
                 </div>
 
@@ -768,38 +770,6 @@ const APP_TYPE = 'hobby';
             }
         }
 
-        function extractDriveId(roundIndex) {
-            const card = document.querySelectorAll('.card')[roundIndex];
-            const urlInput = card.querySelector('.drive-url');
-            const url = urlInput.value;
-
-            if (!url) {
-                alert('Please paste a Google Drive link first');
-                return;
-            }
-
-            const fileId = extractGoogleDriveId(url);
-            if (fileId) {
-                urlInput.value = fileId;
-                alert('File ID extracted: ' + fileId);
-            } else {
-                alert('Could not extract file ID. Please check the link format.');
-            }
-        }
-
-        function extractGoogleDriveId(url) {
-            let fileId = null;
-
-            const pattern1 = /\/file\/d\/([a-zA-Z0-9-_]+)/;
-            const match1 = url.match(pattern1);
-            if (match1) fileId = match1[1];
-
-            if (!fileId) {
-                const pattern2 = /[?&]id=([a-zA-Z0-9-_]+)/;
-                const match2 = url.match(pattern2);
-                if (match2) fileId = match2[1];
-            }
-
             if (!fileId) {
                 const pattern3 = /\/d\/([a-zA-Z0-9-_]+)/;
                 const match3 = url.match(pattern3);
@@ -809,16 +779,39 @@ const APP_TYPE = 'hobby';
             return fileId;
         }
 
+        async function handleVideoUpload(roundIndex, input) {
+            const file = input.files[0];
+            if(!file) return;
+            const statusEl = document.getElementById(`video-status-${roundIndex}`);
+            statusEl.textContent = '⏳ Uploading...';
+            statusEl.style.color = 'rgba(245,240,232,0.8)';
+            try {
+                const fileName = `round-${roundIndex}-${Date.now()}.mp4`;
+                const { data, error } = await _supa.storage
+                    .from('videos')
+                    .upload(fileName, file, { upsert: true, contentType: 'video/mp4' });
+                if(error) throw error;
+                const { data: urlData } = _supa.storage.from('videos').getPublicUrl(fileName);
+                const publicUrl = urlData.publicUrl;
+                // Store URL in hidden input
+                const card = document.querySelectorAll('.card')[roundIndex];
+                card.querySelector('.video-url').value = publicUrl;
+                statusEl.textContent = '✅ ' + file.name;
+                statusEl.style.color = '#4ade80';
+            } catch(e) {
+                console.error('Upload error:', e);
+                statusEl.textContent = '❌ Upload failed: ' + (e.message || 'unknown error');
+                statusEl.style.color = '#f87171';
+            }
+        }
+
         async function saveRound(roundIndex) {
             const card = document.querySelectorAll('.card')[roundIndex];
 
-            // Extract file ID if a full Google Drive URL was pasted
-            let videoInput = card.querySelector('.drive-url').value || '';
-            const driveMatch = videoInput.match(/\/d\/([a-zA-Z0-9_-]+)/);
-            if (driveMatch) { videoInput = driveMatch[1]; card.querySelector('.drive-url').value = videoInput; }
+            const videoInput = card.querySelector('.video-url').value || '';
 
             const roundData = {
-                videoId: videoInput,
+                videoUrl: videoInput,
                 candidateName: card.querySelector('.candidate-name').value || '',
                 role: card.querySelector('.role').value || '',
                 hobby: card.querySelector('.hobby').value || '',
@@ -874,12 +867,10 @@ const APP_TYPE = 'hobby';
                 const card = document.querySelectorAll('.card')[i];
                 if (!card) { rounds.push({videoId:'',candidateName:'',role:'',hobby:'',hireAmount:'',savingsLine:'',options:[{hobby:'',emoji:''},{hobby:'',emoji:''},{hobby:'',emoji:''},{hobby:'',emoji:''}],correctIndex:0}); continue; }
 
-                let videoInput = card.querySelector('.drive-url').value || '';
-                const driveMatch = videoInput.match(/\/d\/([a-zA-Z0-9_-]+)/);
-                if (driveMatch) { videoInput = driveMatch[1]; card.querySelector('.drive-url').value = videoInput; }
+                const videoInput = card.querySelector('.video-url').value || '';
 
                 const roundData = {
-                    videoId: videoInput,
+                    videoUrl: videoInput,
                     candidateName: card.querySelector('.candidate-name').value || '',
                     role: card.querySelector('.role').value || '',
                     hobby: card.querySelector('.hobby').value || '',

@@ -167,11 +167,12 @@ p, .body { color: var(--cream-70); }
   transition: all .2s;
 }
 .video-wrap:hover .play-ring { box-shadow: 0 0 0 26px rgba(255,90,40,.08); }
-.video-wrap iframe {
-  position: absolute; inset: 0; width: 100%; height: 100%;
-  border: none; display: none;
+.video-wrap video {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; border-radius: 18px;
 }
-.video-wrap.playing iframe { display: block; }
+.video-wrap.playing video { display: block; }
 .video-wrap.playing .vid-placeholder { display: none; }
 .vid-placeholder {
   display: flex; flex-direction: column; align-items: center; gap: 14px;
@@ -540,7 +541,7 @@ p, .body { color: var(--cream-70); }
         <div class="play-ring" id="playring"><div class="play-icon"></div></div>
         <div class="vid-role-label" id="vid-role-label">Tap to play</div>
       </div>
-      <iframe id="vid-iframe" allow="autoplay" allowfullscreen></iframe>
+      <video id="vid-player" playsinline webkit-playsinline style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;display:none;border-radius:18px;"></video>
     </div>
 
     <div class="tc mb-3">
@@ -788,6 +789,52 @@ const CONFIG = {
 let cur=0, score=0, sel=null, answered=false;
 let repName="", sessionAnswers=[], activeRounds=[];
 
+/* ── IndexedDB Video Cache ─────────────────────────────── */
+let _vdb = null;
+function openVideoDB() {
+  if(_vdb) return Promise.resolve(_vdb);
+  return new Promise((res,rej)=>{
+    const req = indexedDB.open('scalearmy-videos', 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore('blobs');
+    req.onsuccess = e => { _vdb = e.target.result; res(_vdb); };
+    req.onerror   = () => rej(req.error);
+  });
+}
+async function getVideoBlobUrl(url) {
+  try {
+    const db = await openVideoDB();
+    return new Promise(res => {
+      const tx  = db.transaction('blobs','readonly');
+      const req = tx.objectStore('blobs').get(url);
+      req.onsuccess = () => {
+        if(req.result) res(URL.createObjectURL(req.result));
+        else res(null);
+      };
+      req.onerror = () => res(null);
+    });
+  } catch { return null; }
+}
+async function cacheVideoBlob(url) {
+  try {
+    const existing = await getVideoBlobUrl(url);
+    if(existing) return; // already cached
+    const resp = await fetch(url);
+    if(!resp.ok) return;
+    const blob = await resp.blob();
+    const db   = await openVideoDB();
+    const tx   = db.transaction('blobs','readwrite');
+    tx.objectStore('blobs').put(blob, url);
+  } catch(e) { console.warn('Video cache failed:', e); }
+}
+async function preCacheAllVideos(rounds) {
+  for(const r of rounds) {
+    const url = r.videoUrl || r.videoId || '';
+    if(url && !url.startsWith('PASTE') && url.startsWith('http')) {
+      cacheVideoBlob(url); // fire and forget, don't await
+    }
+  }
+}
+
 
 /* ─────────────────────────────────────────
    NAVIGATION
@@ -844,6 +891,8 @@ async function _kickoff() {
           const r0 = activeRounds[0];
           if(r0) document.getElementById('intro-role').textContent = pluralize(r0.role || 'Candidates');
         }
+        // Pre-cache all videos in background
+        preCacheAllVideos(activeRounds);
       }
     }
   } catch(e) {}
@@ -867,15 +916,15 @@ function loadRound(i) {
 
   // Reset video
   const box=document.getElementById('vidbox'),
-        iframe=document.getElementById('vid-iframe'),
         ph=document.getElementById('vid-placeholder'),
         rl=document.getElementById('vid-role-label');
   box.classList.remove('playing');
-  iframe.src='';
+  const vidEl=document.getElementById('vid-player');
+  if(vidEl){ vidEl.pause(); vidEl.src=''; vidEl.style.display='none'; }
   ph.style.display='flex';
   document.getElementById('playring').style.transform='';
   rl.textContent='Tap to play · '+(r.candidateName||'Candidate');
-  box.onclick=()=>tapPlay(r.videoId);
+  box.onclick=()=>tapPlay(r.videoUrl || r.videoId || '');
 
   // Dots
   document.querySelectorAll('.rdot').forEach((d,idx)=>{
@@ -903,18 +952,23 @@ function loadRound(i) {
   sb.disabled=true; sb.style.opacity='.28';
 }
 
-function tapPlay(videoId) {
+async function tapPlay(videoUrl) {
   const box=document.getElementById('vidbox'),
-        iframe=document.getElementById('vid-iframe'),
+        vid=document.getElementById('vid-player'),
         ph=document.getElementById('vid-placeholder');
-  if(videoId && !videoId.startsWith('PASTE')){
-    iframe.src=`https://drive.google.com/file/d/${videoId}/preview`;
-    box.classList.add('playing'); ph.style.display='none';
-  } else {
+  if(!videoUrl || videoUrl.startsWith('PASTE') || videoUrl === '') {
     document.getElementById('playring').style.transform='scale(0)';
-    document.getElementById('vid-role-label').textContent='▶  Playing… (add real video IDs to config)';
+    document.getElementById('vid-role-label').textContent='▶  No video added yet';
     document.getElementById('vidbox').onclick=null;
+    return;
   }
+  ph.style.display='none';
+  vid.style.display='block';
+  box.classList.add('playing');
+  // Try cached blob first, fall back to URL
+  const cached = await getVideoBlobUrl(videoUrl);
+  vid.src = cached || videoUrl;
+  vid.play().catch(()=>{});
 }
 
 function pick(idx,btn) {
@@ -1124,6 +1178,12 @@ function showIntro(roundIdx) {
 }
 function proceedToRound() { loadRound(cur); goto('s-game'); }
 
+// Register service worker
+if('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
