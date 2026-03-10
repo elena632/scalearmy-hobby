@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scale Army Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0d0d0d;
+            color: #f5f0e8;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: #0d0d0d;
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+        }
+
+        .sidebar-title {
+            padding: 20px;
+            font-family: Georgia, serif;
+            font-size: 14px;
+            font-weight: bold;
+            color: rgba(245, 240, 232, 0.7);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            margin-bottom: 20px;
+        }
+
+        .nav-item {
+            display: block;
+            padding: 12px 20px;
+            color: rgba(245, 240, 232, 0.7);
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 4px 10px;
+            border-radius: 6px;
+            text-align: left;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 90, 40, 0.1);
+            color: #ff5a28;
+        }
+
+        .nav-item.active {
+            background: #ff5a28;
+            color: #0d0d0d;
+            font-weight: 600;
+        }
+
+        .nav-spacer {
+            flex: 1;
+        }
+
+        .back-link {
+            padding: 12px 20px;
+            margin: 10px;
+            text-decoration: none;
+            color: rgba(245, 240, 232, 0.5);
+            font-size: 13px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: block;
+            transition: color 0.3s ease;
+        }
+
+        .back-link:hover {
+            color: #ff5a28;
+        }
+
+        /* Main content */
+        .main-content {
+            flex: 1;
+            margin-left: 260px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        .top-bar {
+            background: #1a1a1a;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .top-bar h1 {
+            font-family: Georgia, serif;
+            font-size: 24px;
+            font-weight: normal;
+            color: #f5f0e8;
+        }
+
+        .top-bar .section-name {
+            color: rgba(245, 240, 232, 0.5);
+            font-size: 16px;
+            margin-left: auto;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px;
+        }
+
+        /* Buttons */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #ff5a28;
+            color: #0d0d0d;
+        }
+
+        .btn-primary:hover {
+            background: #ff7548;
+        }
+
+        .btn-secondary {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #f5f0e8;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 90, 40, 0.1);
+            border-color: #ff5a28;
+            color: #ff5a28;
+        }
+
+        .btn-danger {
+            background: #d32f2f;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #f44336;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        /* Forms */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            color: rgba(245, 240, 232, 0.8);
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="number"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px;
+            background: #2a2a2a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            color: #f5f0e8;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus,
+        input[type="email"]:focus,
+        input[type="number"]:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #ff5a28;
+            background: #2a2a2a;
+        }
+
+        select option {
+            background: #2a2a2a;
+            color: #f5f0e8;
+        }
+
+        /* Cards */
+        .card {
+            background: #1a1a1a;
+            border-left: 4px solid #ff5a28;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 20px;
+            background: rgba(255, 90, 40, 0.05);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            transition: background 0.3s ease;
+        }
+
+        .card-header:hover {
+            background: rgba(255, 90, 40, 0.1);
+        }
+
+        .card-header h3 {
+            font-family: Georgia, serif;
+            font-size: 18px;
+            font-weight: normal;
+            color: #ff5a28;
+        }
+
+        .card-header .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .card-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .card-body {
+            padding: 20px;
+            display: none;
+        }
+
+        .card-body.expanded {
+            display: block;
+        }
+
+        /* Grid for summary cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .summary-card {
+            background: #1a1a1a;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .summary-card .number {
+            font-family: Georgia, serif;
+            font-size: 48px;
+            font-weight: bold;
+            color: #ff5a28;
+            margin-bottom: 10px;
+        }
+
+        .summary-card .label {
+            font-size: 14px;
+            color: rgba(245, 240, 232, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Tables */
+        .table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 40px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+
+        table thead {
+            background: #2a2a2a;
+            position: sticky;
+            top: 0;
+        }
+
+        table th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            color: #f5f0e8;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        table td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        table tbody tr:nth-child(even) {
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        table tbody tr:hover {
+            background: rgba(255, 90, 40, 0.05);
+        }
+
+        .status-green { color: #4caf50; }
+        .status-orange { color: #ff9800; }
+        .status-red { color: #f44336; }
+
+        /* Radio buttons */
+        .radio-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="radio"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Options section */
+        .options-list {
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            padding-top: 20px;
+            margin-top: 30px;
+        }
+
+        .option-row {
+            display: grid;
+            grid-template-columns: 1fr 80px 80px;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: start;
+            padding: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 6px;
+        }
+
+        .option-row label {
+            margin-bottom: 6px;
+        }
+
+        .option-row input[type="text"] {
+            margin-bottom: 8px;
+        }
+
+        .option-row .flag-input {
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        .option-row .radio-group {
+            justify-content: center;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(245, 240, 232, 0.5);
+        }
+
+        .empty-state p {
+            font-size: 16px;
+            margin-top: 12px;
+        }
+
+        .round-section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .round-section-header h2 {
+            font-family: Georgia, serif;
+            font-size: 20px;
+            font-weight: normal;
+        }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .extract-button {
+            align-self: flex-end;
+            margin-bottom: 0;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+                position: static;
+            }
+
+            .main-content {
+                margin-left: 0;
+                height: auto;
+            }
+
+            .content-wrapper {
+                padding: 20px;
+            }
+
+            .field-row {
+                grid-template-columns: 1fr;
+            }
+
+            .option-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-title">Scale Army</div>
+        <a class="nav-item active" data-section="video-library" onclick="openSection('video-library')">
+            📹 Video Library
+        </a>
+        <a class="nav-item" data-section="analytics" onclick="openSection('analytics')">
+            📊 Analytics
+        </a>
+
+
+        <a class="nav-item" data-section="calendly" onclick="openSection('calendly')">
+            🔗 Calendly Link
+        </a>
+        <a class="nav-item disabled" title="Coming soon">
+            🔒 Admin Access
+        </a>
+        <div class="nav-spacer"></div>
+        <a href="/" class="back-link">← Back to Game</a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <h1>Scale Army Admin</h1>
+            <div class="section-name" id="section-name">Video Library</div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-wrapper">
+            <!-- Video Library Section -->
+            <div class="section active" id="video-library">
+                <div class="round-section-header">
+                    <h2>Video Library</h2>
+                    <button class="btn btn-primary" onclick="saveAllRounds()">Save All Rounds</button>
+                </div>
+
+                <div id="rounds-container"></div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div class="section" id="analytics">
+                <div class="round-section-header">
+                    <h2>Analytics Dashboard</h2>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-secondary" onclick="refreshAnalytics()">Refresh</button>
+                        <button class="btn btn-danger" onclick="clearAnalyticsConfirm()">Clear All Data</button>
+                    </div>
+                </div>
+
+                <div id="analytics-content"></div>
+            </div>
+
+            <!-- Calendly Section -->
+            <div class="section" id="calendly">
+                <div class="round-section-header" style="margin-bottom:32px;">
+                    <h2 style="font-family:Georgia,serif; font-size:22px; color:#f5f0e8; margin:0;">Calendly Link</h2>
+                </div>
+                <div style="max-width:560px;">
+                    <div style="background:#1a1a1a; border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:32px;">
+                        <p style="color:rgba(245,240,232,0.6); font-size:14px; margin:0 0 24px 0; line-height:1.6;">
+                            Paste your Calendly booking link below. This is the link players will be sent to when they click <strong style="color:#f5f0e8;">"Book a Call"</strong> at the end of the game.
+                        </p>
+                        <label style="display:block; font-size:12px; font-weight:600; color:rgba(245,240,232,0.5); text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Booking Link</label>
+                        <input id="calendly-url" type="url" placeholder="https://calendly.com/your-link"
+                            style="width:100%; padding:14px 16px; border-radius:10px; border:1.5px solid rgba(255,255,255,0.1);
+                                   background:#2a2a2a; color:#f5f0e8; font-size:15px; outline:none;
+                                   box-sizing:border-box; margin-bottom:20px; transition:border-color 0.2s;"
+                            onfocus="this.style.borderColor='#ff5a28'" onblur="this.style.borderColor='rgba(255,255,255,0.1)'">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                            <button onclick="saveCalendly()"
+                                style="background:#ff5a28; color:#fff; border:none; border-radius:10px;
+                                       padding:12px 28px; font-size:15px; font-weight:600; cursor:pointer;">
+                                Save Link
+                            </button>
+                            <span id="calendly-saved" style="color:#4ade80; font-size:14px; opacity:0; transition:opacity 0.3s;">✓ Saved!</span>
+                        </div>
+                        <div style="margin-top:24px; padding-top:24px; border-top:1px solid rgba(255,255,255,0.06);">
+                            <p style="color:rgba(245,240,232,0.4); font-size:13px; margin:0;">
+                                Current link: <span id="calendly-current" style="color:rgba(245,240,232,0.7); font-style:italic;">Not set</span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const COUNTRY_FLAGS = {
+            'Nigeria': '🇳🇬',
+            'Ghana': '🇬🇭',
+            'Kenya': '🇰🇪',
+            'South Africa': '🇿🇦',
+            'Ethiopia': '🇪🇹',
+            'Tanzania': '🇹🇿',
+            'Rwanda': '🇷🇼',
+            'Uganda': '🇺🇬',
+            'Senegal': '🇸🇳',
+            'Egypt': '🇪🇬',
+            'Morocco': '🇲🇦',
+            'Mexico': '🇲🇽',
+            'Colombia': '🇨🇴',
+            'Brazil': '🇧🇷',
+            'Argentina': '🇦🇷',
+            'Chile': '🇨🇱',
+            'Peru': '🇵🇪',
+            'Ukraine': '🇺🇦',
+            'Poland': '🇵🇱',
+            'Romania': '🇷🇴',
+            'Serbia': '🇷🇸',
+            'Philippines': '🇵🇭',
+            'Vietnam': '🇻🇳',
+            'Indonesia': '🇮🇩',
+            'Malaysia': '🇲🇾',
+            'Thailand': '🇹🇭',
+            'India': '🇮🇳',
+            'Pakistan': '🇵🇰',
+            'Bangladesh': '🇧🇩',
+            'Sri Lanka': '🇱🇰'
+        };
+
+        const COUNTRIES = {
+            'Africa': ['Nigeria', 'Ghana', 'Kenya', 'South Africa', 'Ethiopia', 'Tanzania', 'Rwanda', 'Uganda', 'Senegal'],
+            'N. Africa / Middle East': ['Egypt', 'Morocco'],
+            'LATAM': ['Mexico', 'Colombia', 'Brazil', 'Argentina', 'Chile', 'Peru'],
+            'E. Europe': ['Ukraine', 'Poland', 'Romania', 'Serbia'],
+            'SE. Asia': ['Philippines', 'Vietnam', 'Indonesia', 'Malaysia', 'Thailand'],
+            'S. Asia': ['India', 'Pakistan', 'Bangladesh', 'Sri Lanka']
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadRounds();
+            loadAnalytics();
+        });
+
+        function openSection(sectionName) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(sectionName).classList.add('active');
+
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.section === sectionName) {
+                    item.classList.add('active');
+                }
+            });
+
+            const titles = {
+                'video-library': 'Video Library',
+                'analytics': 'Analytics',
+                'calendly': 'Calendly Link'
+            };
+            document.getElementById('section-name').textContent = titles[sectionName] || '';
+
+            if (sectionName === 'analytics') {
+                loadAnalytics();
+            }
+            if (sectionName === 'calendly') {
+                loadCalendly();
+            }
+        }
+
+        function loadRounds() {
+            const container = document.getElementById('rounds-container');
+            const savedData = localStorage.getItem('sa_rounds');
+            const rounds = savedData ? JSON.parse(savedData) : [];
+
+            while (rounds.length < 5) {
+                rounds.push({
+                    videoId: '',
+                    candidateName: '',
+                    role: '',
+                    country: '',
+                    flag: '',
+                    hireAmount: '',
+                    savingsLine: '',
+                    options: [
+                        { name: '', flag: '' },
+                        { name: '', flag: '' },
+                        { name: '', flag: '' },
+                        { name: '', flag: '' }
+                    ],
+                    correctIndex: 0
+                });
+            }
+
+            container.innerHTML = '';
+
+            rounds.forEach((round, index) => {
+                const card = createRoundCard(round, index);
+                container.appendChild(card);
+            });
+        }
+
+        function createRoundCard(roundData, roundIndex) {
+            const card = document.createElement('div');
+            card.className = 'card';
+
+            const header = document.createElement('div');
+            header.className = 'card-header';
+            header.innerHTML = `
+                <h3>Round ${roundIndex + 1}</h3>
+                <span class="toggle-icon">▶</span>
+            `;
+
+            const body = document.createElement('div');
+            body.className = 'card-body';
+
+            let html = `
+                <div class="form-group">
+                    <label>Google Drive Link</label>
+                    <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px;">
+                        <input type="text" class="drive-url" placeholder="Paste Drive share link here" value="${roundData.videoId || ''}">
+                        <button class="btn btn-secondary btn-small extract-button" onclick="extractDriveId(${roundIndex})">Extract ID</button>
+                    </div>
+                </div>
+
+                <div class="field-row">
+                    <div class="form-group">
+                        <label>Candidate Name</label>
+                        <input type="text" class="candidate-name" placeholder="e.g. Maria Santos" value="${roundData.candidateName || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Role</label>
+                        <input type="text" class="role" placeholder="e.g. Senior Developer" value="${roundData.role || ''}">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Hobby (correct answer)</label>
+                    <input type="text" class="hobby" placeholder="e.g. Rock Climbing" value="${roundData.hobby || ''}">
+                </div>
+
+                <div class="field-row">
+                    <div class="form-group">
+                        <label>Hire Amount</label>
+                        <input type="text" class="hire-amount" placeholder="e.g. $4,200/mo" value="${roundData.hireAmount || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label>Savings Line</label>
+                        <input type="text" class="savings-line" placeholder="e.g. Save 68% vs. U.S. hire" value="${roundData.savingsLine || ''}">
+                    </div>
+                </div>
+
+                <div class="options-list">
+                    <h4 style="margin-bottom: 16px; color: rgba(245, 240, 232, 0.8);">Answer Options</h4>
+            `;
+
+            const correctedIndex = roundData.correctIndex || 0;
+            roundData.options.forEach((opt, optIndex) => {
+                const checked = optIndex === correctedIndex ? 'checked' : '';
+
+                html += `
+                    <div class="option-row">
+                        <div>
+                            <label>Option ${optIndex + 1} Hobby</label>
+                            <input type="text" class="option-name-${roundIndex}-${optIndex}" placeholder="e.g. Rock Climbing" value="${opt.hobby || ''}">
+                        </div>
+                        <div>
+                            <label>Emoji</label>
+                            <input type="text" class="option-flag-${roundIndex}-${optIndex} flag-input" placeholder="🎯" value="${opt.emoji || ''}" maxlength="2">
+                        </div>
+                        <div>
+                            <label>Correct?</label>
+                            <div class="radio-group">
+                                <input type="radio" name="correct-${roundIndex}" value="${optIndex}" ${checked} class="correct-radio-${roundIndex}">
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += `
+                </div>
+
+                <div style="margin-top: 30px;">
+                    <button class="btn btn-primary" onclick="saveRound(${roundIndex})">Save Round ${roundIndex + 1}</button>
+                </div>
+            `;
+
+            body.innerHTML = html;
+
+            header.addEventListener('click', () => {
+                body.classList.toggle('expanded');
+                header.classList.toggle('collapsed');
+            });
+
+            card.appendChild(header);
+            card.appendChild(body);
+
+            return card;
+        }
+
+        function updateFlagFromCountry(selectElement, roundIndex) {
+            const country = selectElement.value;
+            const flagInput = selectElement.closest('.card').querySelector('.flag');
+            if (COUNTRY_FLAGS[country]) {
+                flagInput.value = COUNTRY_FLAGS[country];
+            } else {
+                flagInput.value = '';
+            }
+        }
+
+        function extractDriveId(roundIndex) {
+            const card = document.querySelectorAll('.card')[roundIndex];
+            const urlInput = card.querySelector('.drive-url');
+            const url = urlInput.value;
+
+            if (!url) {
+                alert('Please paste a Google Drive link first');
+                return;
+            }
+
+            const fileId = extractGoogleDriveId(url);
+            if (fileId) {
+                urlInput.value = fileId;
+                alert('File ID extracted: ' + fileId);
+            } else {
+                alert('Could not extract file ID. Please check the link format.');
+            }
+        }
+
+        function extractGoogleDriveId(url) {
+            let fileId = null;
+
+            const pattern1 = /\/file\/d\/([a-zA-Z0-9-_]+)/;
+            const match1 = url.match(pattern1);
+            if (match1) fileId = match1[1];
+
+            if (!fileId) {
+                const pattern2 = /[?&]id=([a-zA-Z0-9-_]+)/;
+                const match2 = url.match(pattern2);
+                if (match2) fileId = match2[1];
+            }
+
+            if (!fileId) {
+                const pattern3 = /\/d\/([a-zA-Z0-9-_]+)/;
+                const match3 = url.match(pattern3);
+                if (match3) fileId = match3[1];
+            }
+
+            return fileId;
+        }
+
+        function saveRound(roundIndex) {
+            const card = document.querySelectorAll('.card')[roundIndex];
+
+            const roundData = {
+                videoId: card.querySelector('.drive-url').value || '',
+                candidateName: card.querySelector('.candidate-name').value || '',
+                role: card.querySelector('.role').value || '',
+                hobby: card.querySelector('.hobby').value || '',
+                hireAmount: card.querySelector('.hire-amount').value || '',
+                savingsLine: card.querySelector('.savings-line').value || '',
+                options: [],
+                correctIndex: 0
+            };
+
+            for (let i = 0; i < 4; i++) {
+                const hobby = card.querySelector(`.option-name-${roundIndex}-${i}`).value || '';
+                const emoji = card.querySelector(`.option-flag-${roundIndex}-${i}`).value || '';
+                roundData.options.push({ hobby, emoji });
+            }
+
+            const correctRadio = card.querySelector(`.correct-radio-${roundIndex}:checked`);
+            if (correctRadio) {
+                roundData.correctIndex = parseInt(correctRadio.value);
+            }
+
+            let rounds = [];
+            const saved = localStorage.getItem('sa_rounds');
+            if (saved) {
+                rounds = JSON.parse(saved);
+            }
+            rounds[roundIndex] = roundData;
+            localStorage.setItem('sa_rounds', JSON.stringify(rounds));
+
+            alert(`Round ${roundIndex + 1} saved successfully!`);
+        }
+
+        function saveAllRounds() {
+            for (let i = 0; i < 5; i++) {
+                const card = document.querySelectorAll('.card')[i];
+                if (!card) continue;
+
+                const roundData = {
+                    videoId: card.querySelector('.drive-url').value || '',
+                    candidateName: card.querySelector('.candidate-name').value || '',
+                    role: card.querySelector('.role').value || '',
+                    country: card.querySelector('.country').value || '',
+                    flag: card.querySelector('.flag').value || '',
+                    hireAmount: card.querySelector('.hire-amount').value || '',
+                    savingsLine: card.querySelector('.savings-line').value || '',
+                    options: [],
+                    correctIndex: 0
+                };
+
+                for (let j = 0; j < 4; j++) {
+                    const name = card.querySelector(`.option-name-${i}-${j}`).value || '';
+                    const flag = card.querySelector(`.option-flag-${i}-${j}`).value || '';
+                    roundData.options.push({ name, flag });
+                }
+
+                const correctRadio = card.querySelector(`.correct-radio-${i}:checked`);
+                if (correctRadio) {
+                    roundData.correctIndex = parseInt(correctRadio.value);
+                }
+
+                let rounds = [];
+                const saved = localStorage.getItem('sa_rounds');
+                if (saved) {
+                    rounds = JSON.parse(saved);
+                }
+                rounds[i] = roundData;
+                localStorage.setItem('sa_rounds', JSON.stringify(rounds));
+            }
+
+            alert('All rounds saved successfully!');
+        }
+
+        function loadAnalytics() {
+            const analyticsContent = document.getElementById('analytics-content');
+            const saved = localStorage.getItem('sa_analytics');
+            const analytics = saved ? JSON.parse(saved) : [];
+
+            if (analytics.length === 0) {
+                analyticsContent.innerHTML = `
+                    <div class="empty-state">
+                        <div style="font-size: 48px;">📊</div>
+                        <p>No data yet. Analytics will appear here once presentations have been played.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const totalPlays = analytics.length;
+            const conversions = analytics.filter(a => a.converted).length;
+            const avgScore = analytics.reduce((sum, a) => sum + (a.score / a.total), 0) / totalPlays;
+            const conversionRate = (conversions / totalPlays) * 100;
+
+            const byPresenter = {};
+            analytics.forEach(entry => {
+                if (!byPresenter[entry.rep]) {
+                    byPresenter[entry.rep] = {
+                        sessions: 0,
+                        totalScore: 0,
+                        totalQuestions: 0,
+                        conversions: 0
+                    };
+                }
+                byPresenter[entry.rep].sessions++;
+                byPresenter[entry.rep].totalScore += entry.score;
+                byPresenter[entry.rep].totalQuestions += entry.total;
+                if (entry.converted) byPresenter[entry.rep].conversions++;
+            });
+
+            let html = `
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="number">${totalPlays}</div>
+                        <div class="label">Total Plays</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="number">${(avgScore * 100).toFixed(0)}%</div>
+                        <div class="label">Avg Score</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="number">${conversions}</div>
+                        <div class="label">Conversions</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="number">${conversionRate.toFixed(1)}%</div>
+                        <div class="label">Conversion Rate</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-bottom: 20px; font-family: Georgia, serif; font-size: 18px;">Per-Presenter Breakdown</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Presenter</th>
+                                <th>Sessions</th>
+                                <th>Avg Score</th>
+                                <th>Conversions</th>
+                                <th>Conv. Rate</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            for (const [rep, data] of Object.entries(byPresenter)) {
+                const presenterAvgScore = (data.totalScore / data.totalQuestions) * 100;
+                const presenterConvRate = (data.conversions / data.sessions) * 100;
+                const convColor = presenterConvRate >= 50 ? 'status-green' : (presenterConvRate >= 20 ? 'status-orange' : 'status-red');
+
+                html += `
+                    <tr>
+                        <td>${rep}</td>
+                        <td>${data.sessions}</td>
+                        <td>${presenterAvgScore.toFixed(0)}%</td>
+                        <td>${data.conversions}</td>
+                        <td class="${convColor}">${presenterConvRate.toFixed(1)}%</td>
+                    </tr>
+                `;
+            }
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3 style="margin-bottom: 20px; font-family: Georgia, serif; font-size: 18px;">Session Log</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Presenter</th>
+                                <th>Score</th>
+                                <th>Booked?</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            const sorted = [...analytics].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+            sorted.forEach(entry => {
+                const booked = entry.converted ? '✅ Yes' : '—';
+                const score = ((entry.score / entry.total) * 100).toFixed(0);
+                html += `
+                    <tr>
+                        <td>${new Date(entry.date).toLocaleDateString()}</td>
+                        <td>${entry.rep}</td>
+                        <td>${score}%</td>
+                        <td>${booked}</td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            analyticsContent.innerHTML = html;
+        }
+
+        function refreshAnalytics() {
+            loadAnalytics();
+        }
+
+        function clearAnalyticsConfirm() {
+            if (confirm('Are you sure you want to clear all analytics data? This cannot be undone.')) {
+                localStorage.removeItem('sa_analytics');
+                loadAnalytics();
+                alert('All analytics data cleared.');
+            }
+        }
+
+        function loadCalendly() {
+            const saved = localStorage.getItem('sa_calendly') || '';
+            document.getElementById('calendly-url').value = saved;
+            document.getElementById('calendly-current').textContent = saved || 'Not set';
+        }
+
+        function saveCalendly() {
+            const url = document.getElementById('calendly-url').value.trim();
+            localStorage.setItem('sa_calendly', url);
+            document.getElementById('calendly-current').textContent = url || 'Not set';
+            const msg = document.getElementById('calendly-saved');
+            msg.style.opacity = '1';
+            setTimeout(() => msg.style.opacity = '0', 2000);
+        }
+
+    </script>
+</body>
+</html>
