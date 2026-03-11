@@ -470,6 +470,9 @@
         <a class="nav-item" data-section="calendly" onclick="openSection('calendly')">
             🔗 Calendly Link
         </a>
+        <a class="nav-item" data-section="logos" onclick="openSection('logos')">
+            🖼️ Client Logos
+        </a>
         <a class="nav-item disabled" title="Coming soon">
             🔒 Admin Access
         </a>
@@ -542,6 +545,20 @@
                     </div>
                 </div>
             </div>
+
+        <div class="section" id="logos">
+            <div style="margin-bottom:24px;">
+                <h3 style="font-size:20px; margin-bottom:8px;">Client Logos</h3>
+                <p style="color:rgba(245,240,232,0.5); font-size:14px;">Upload your client logos. They appear on the trust signals slide. PNG with transparent background works best.</p>
+            </div>
+            <div id="logo-upload-area" style="display:flex; flex-wrap:wrap; gap:16px; margin-bottom:24px;"></div>
+            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                <input type="file" id="logo-file-input" accept="image/png,image/svg+xml,image/jpeg" style="display:none;" onchange="handleLogoUpload(this)" multiple>
+                <button class="btn btn-secondary" onclick="document.getElementById('logo-file-input').click()" type="button">📁 Upload Logo(s)</button>
+                <button class="btn btn-orange" onclick="saveLogos()" type="button">Save Logos</button>
+            </div>
+            <p id="logos-saved" style="color:#4ade80; margin-top:12px; opacity:0; transition:opacity .4s; font-size:14px;">✅ Logos saved!</p>
+        </div>
         </div>
     </div>
 
@@ -610,19 +627,23 @@ const APP_TYPE = 'hobby';
             const titles = {
                 'video-library': 'Video Library',
                 'analytics': 'Analytics',
-                'calendly': 'Calendly Link'
+                'calendly': 'Calendly Link',
+                'logos': 'Client Logos'
             };
             document.getElementById('section-name').textContent = titles[sectionName] || '';
 
             if (sectionName === 'analytics') {
                 loadAnalytics();
             }
+            if (sectionName === 'logos') {
+                loadLogosAdmin();
+            }
             if (sectionName === 'calendly') {
                 loadCalendly();
             }
         }
 
-        async async function loadRounds() {
+        async function loadRounds() {
             // Always start with 5 empty rounds as fallback
             let rounds = Array.from({length: 5}, () => ({
                     videoUrl: '',
@@ -768,15 +789,6 @@ const APP_TYPE = 'hobby';
             } else {
                 flagInput.value = '';
             }
-        }
-
-            if (!fileId) {
-                const pattern3 = /\/d\/([a-zA-Z0-9-_]+)/;
-                const match3 = url.match(pattern3);
-                if (match3) fileId = match3[1];
-            }
-
-            return fileId;
         }
 
         async function handleVideoUpload(roundIndex, input) {
@@ -988,6 +1000,67 @@ const APP_TYPE = 'hobby';
 
 }
 
-    </script>
+    
+        // ── Logo Management ──────────────────────────────────
+        let _pendingLogoUrls = [];
+
+        async function loadLogosAdmin() {
+            try {
+                if(!_supa) return;
+                const { data } = await _supa.from('config').select('logos').eq('app_type', APP_TYPE).single();
+                _pendingLogoUrls = (data && data.logos) ? [...data.logos] : [];
+                renderLogoGrid();
+            } catch(e) {}
+        }
+
+        function renderLogoGrid() {
+            const area = document.getElementById('logo-upload-area');
+            if(!area) return;
+            if(_pendingLogoUrls.length === 0) {
+                area.innerHTML = '<p style="color:rgba(245,240,232,0.4); font-size:14px;">No logos uploaded yet.</p>';
+                return;
+            }
+            area.innerHTML = _pendingLogoUrls.map((url, i) => `
+                <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:16px; display:flex; flex-direction:column; align-items:center; gap:10px; min-width:120px;">
+                    <img src="${url}" style="height:48px; width:auto; max-width:120px; object-fit:contain; opacity:0.9;">
+                    <button onclick="removeLogo(${i})" style="background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); color:#f87171; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer;">Remove</button>
+                </div>`).join('');
+        }
+
+        function removeLogo(index) {
+            _pendingLogoUrls.splice(index, 1);
+            renderLogoGrid();
+        }
+
+        async function handleLogoUpload(input) {
+            const files = Array.from(input.files);
+            for(const file of files) {
+                const ext = file.name.split('.').pop();
+                const fileName = `logo-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+                try {
+                    const { error } = await _supa.storage.from('logos').upload(fileName, file, { upsert: true });
+                    if(error) throw error;
+                    const { data: urlData } = _supa.storage.from('logos').getPublicUrl(fileName);
+                    _pendingLogoUrls.push(urlData.publicUrl);
+                    renderLogoGrid();
+                } catch(e) {
+                    alert('Upload failed: ' + (e.message || 'unknown error'));
+                }
+            }
+            input.value = '';
+        }
+
+        async function saveLogos() {
+            try {
+                if(_supa) {
+                    await _supa.from('config').update({ logos: _pendingLogoUrls }).eq('app_type', APP_TYPE);
+                }
+                const msg = document.getElementById('logos-saved');
+                msg.style.opacity = '1';
+                setTimeout(() => msg.style.opacity = '0', 2000);
+            } catch(e) { alert('Save failed: ' + e.message); }
+        }
+
+        </script>
 </body>
 </html>
