@@ -1091,7 +1091,7 @@ function launchConfetti() {
 /* ─────────────────────────────────────────
    ANALYTICS
 ───────────────────────────────────────── */
-function saveAnalytics() {
+async function saveAnalytics() {
   const entry = { app_type: APP_TYPE, rep: repName, score, total: activeRounds.length, date: new Date().toLocaleDateString(), answers: sessionAnswers, converted: false };
   try {
     if(_supa) {
