@@ -863,11 +863,14 @@ async function cacheVideoBlob(url) {
   } catch(e) { console.warn('Video cache failed:', e); }
 }
 async function preCacheAllVideos(rounds) {
-  for(const r of rounds) {
-    const url = r.videoUrl || r.videoId || '';
-    if(url && !url.startsWith('PASTE') && url.startsWith('http')) {
-      cacheVideoBlob(url); // fire and forget, don't await
-    }
+  // Cache first video with priority (await it), then rest in background
+  const urls = rounds
+    .map(r => r.videoUrl || r.videoId || '')
+    .filter(u => u && !u.startsWith('PASTE') && u.startsWith('http'));
+  if(urls.length === 0) return;
+  await cacheVideoBlob(urls[0]); // priority: current round
+  for(let i = 1; i < urls.length; i++) {
+    cacheVideoBlob(urls[i]); // rest fire and forget
   }
 }
 
@@ -1029,18 +1032,19 @@ async function tapPlay(videoUrl) {
   // Show loading spinner
   box.classList.add('loading');
   vid.style.display='block';
-  // Try cached blob first, fall back to URL
+  // Try cached blob first, fall back to direct URL (stream immediately)
   const cached = await getVideoBlobUrl(videoUrl);
   vid.src = cached || videoUrl;
-  vid.oncanplay = () => {
-    box.classList.remove('loading');
-    box.classList.add('playing');
-    pauseIcon.style.display='flex';
-    resumeIcon.style.display='none';
-    vid.play().catch(()=>{});
-    box.onclick = () => tapPlay(videoUrl);
-  };
-  vid.load();
+  // Start playing right away — don't wait for full download
+  box.classList.remove('loading');
+  box.classList.add('playing');
+  pauseIcon.style.display='flex';
+  resumeIcon.style.display='none';
+  vid.play().catch(()=>{});
+  // Switch click to toggle pause/play
+  box.onclick = () => tapPlay(videoUrl);
+  // Cache in background for next time
+  if(!cached) cacheVideoBlob(videoUrl);
 }
 
 function pick(idx,btn) {
