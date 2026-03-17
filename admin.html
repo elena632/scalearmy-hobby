@@ -1053,7 +1053,9 @@ const APP_TYPE = 'hobby';
         async function saveLogos() {
             try {
                 if(_supa) {
-                    await _supa.from('config').update({ logos: _pendingLogoUrls }).eq('app_type', APP_TYPE);
+                    const { error } = await _supa.from('config')
+                        .upsert({ app_type: APP_TYPE, logos: _pendingLogoUrls }, { onConflict: 'app_type' });
+                    if(error) throw error;
                 }
                 const msg = document.getElementById('logos-saved');
                 msg.style.opacity = '1';
