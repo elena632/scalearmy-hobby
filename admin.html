@@ -863,7 +863,7 @@ const APP_TYPE = 'hobby';
             rounds[roundIndex] = roundData;
             try {
                 if(_supa) {
-                    await _supa.from('config').update({ rounds, updated_at: new Date().toISOString() }).eq('app_type', APP_TYPE);
+                    const ts = new Date().toISOString(); await _supa.from('config').update({ rounds, updated_at: ts, last_updated: ts }).eq('app_type', APP_TYPE);
                 }
             } catch(e) { localStorage.setItem('sa_rounds', JSON.stringify(rounds)); }
 
@@ -907,7 +907,7 @@ const APP_TYPE = 'hobby';
 
             try {
                 if(_supa) {
-                    await _supa.from('config').update({ rounds, updated_at: new Date().toISOString() }).eq('app_type', APP_TYPE);
+                    const ts = new Date().toISOString(); await _supa.from('config').update({ rounds, updated_at: ts, last_updated: ts }).eq('app_type', APP_TYPE);
                 }
             } catch(e) { localStorage.setItem('sa_rounds', JSON.stringify(rounds)); }
 
@@ -1053,8 +1053,15 @@ const APP_TYPE = 'hobby';
         async function saveLogos() {
             try {
                 if(_supa) {
-                    const { error } = await _supa.from('config')
-                        .upsert({ app_type: APP_TYPE, logos: _pendingLogoUrls }, { onConflict: 'app_type' });
+                    const ts = new Date().toISOString();
+                    // Try with last_updated first; fall back without it if column missing
+                    let { error } = await _supa.from('config')
+                        .upsert({ app_type: APP_TYPE, logos: _pendingLogoUrls, last_updated: ts }, { onConflict: 'app_type' });
+                    if(error && error.message && error.message.includes('last_updated')) {
+                        const res = await _supa.from('config')
+                            .upsert({ app_type: APP_TYPE, logos: _pendingLogoUrls }, { onConflict: 'app_type' });
+                        error = res.error;
+                    }
                     if(error) throw error;
                 }
                 const msg = document.getElementById('logos-saved');
