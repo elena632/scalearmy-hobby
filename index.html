@@ -315,7 +315,7 @@ p, .body { color: var(--cream-70); }
 /* ═══════════════════════════════════════
    LOGO CHIPS (client logos placeholder)
 ═══════════════════════════════════════ */
-.logo-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.logo-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; }
 .lchip {
   background: var(--cream-08); border: 1px solid var(--cream-15);
   border-radius: 40px; padding: 9px 20px;
@@ -578,7 +578,7 @@ p, .body { color: var(--cream-70); }
 
     <div class="tc mb-2">
       <h2 style="font-family:var(--serif); font-size:clamp(24px,3.5vw,36px); font-weight:700; letter-spacing:-.2px; color:var(--cream);">
-        What is this candidate's hobby?
+        What role was this candidate hired for?
       </h2>
       <p style="font-size:13px; color:var(--cream-40); margin-top:4px;">Pick one option below</p>
     </div>
@@ -911,7 +911,9 @@ async function loadLogos() {
     const row = document.getElementById('client-logos');
     if(!row) return;
     row.innerHTML = logos.map(url =>
-      `<img src="${url}" style="height:52px; width:auto; max-width:140px; object-fit:contain; opacity:0.9;" draggable="false">`
+      `<div style="background:rgba(245,240,232,0.06); border-radius:10px; height:60px; display:flex; align-items:center; justify-content:center; padding:10px;">
+        <img src="${url}" style="max-height:100%; max-width:100%; width:auto; object-fit:contain; opacity:0.9;" draggable="false">
+       </div>`
     ).join('');
   } catch(e) { /* keep placeholder logos on error */ }
 }
