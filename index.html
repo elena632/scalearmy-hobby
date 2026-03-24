@@ -911,8 +911,8 @@ async function loadLogos() {
     const row = document.getElementById('client-logos');
     if(!row) return;
     row.innerHTML = logos.map(url =>
-      `<div style="background:rgba(245,240,232,0.06); border-radius:10px; height:60px; display:flex; align-items:center; justify-content:center; padding:10px;">
-        <img src="${url}" style="max-height:100%; max-width:100%; width:auto; object-fit:contain; opacity:0.9;" draggable="false">
+      `<div style="height:60px; display:flex; align-items:center; justify-content:center; padding:10px;">
+        <img src="${url}" style="max-height:100%; max-width:100%; width:auto; object-fit:contain; opacity:0.85;" draggable="false">
        </div>`
     ).join('');
   } catch(e) { /* keep placeholder logos on error */ }
